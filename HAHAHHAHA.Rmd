@@ -55,24 +55,24 @@ for the Philippines, transforming them into a suitable coordinate
 system. The data is downloaded from Kontur Population.
 
 ```{r}
-BB_hex <- st_read("C:/Users/Administrator/Documents/data/kontur_population_BB_20231101.gpkg") %>% st_transform(3106)
-BB_admin <- st_read("C:/Users/Administrator/Documents/data/kontur_boundaries_BB_20230628.gpkg") %>% st_transform(3106)
+IT_hex <- st_read("C:/Program Files/RStudio/data/kontur_population_IT_20231101.gpkg") %>% st_transform(3106)
+IT_admin <- st_read("C:/Program Files/RStudio/data/kontur_boundaries_IT_20230628.gpkg") %>% st_transform(3106)
 ```
 
-#### **4. Check and Create Boundaries**:
+#### **4. Check and Create Boundaries**: 
 
 Inspect the 'name_en' column and create the boundary for the
 Philippines. Use the filter option to plot specific districts and
 divisions on the map.
 
 ```{r}
-distinct_names <- BB_admin %>% distinct(name_en)
+distinct_names <- IT_admin %>% distinct(name_en)
 print(distinct_names)
 ```
 
 ```{r}
 # Creating BD Boundary
-BB_boundary <- BB_admin %>%
+IT_boundary <- IT_admin %>%
   st_geometry %>%
   st_union %>%
   st_sf %>%
@@ -84,14 +84,14 @@ BB_boundary <- BB_admin %>%
 Visualize the hex data and boundaries to ensure accuracy.
 
 ```{r}
-names(BB_hex)
+names(IT_hex)
 ```
 
 ```{r}
  library(ggplot2)
-ggplot(BB_hex) + 
-  geom_sf(aes(fill = population), color = "blue", linewidth = 0) + 
-  geom_sf(data = BB_boundary, fill = NA, color = "white")
+ggplot(IT_hex) + 
+  geom_sf(aes(fill = population), color = "orange", linewidth = 0) + 
+  geom_sf(data = IT_boundary, fill = NA, color = "white")
 ```
 
 #### **6. Calculate Aspect Ratio**:
@@ -101,7 +101,7 @@ boundary.
 
 ```{r}
 # setting the ph boundary as a bounding box
-bbox <- st_bbox(BB_boundary)
+bbox <- st_bbox(IT_boundary)
 
 # finding the aspect ratio
 bottom_left <- st_point(c(bbox[["xmin"]], bbox[["ymin"]])) %>%
@@ -141,7 +141,7 @@ rendering.
 size = 3500
 
 pop_raster <- st_rasterize(
-  BB_hex,
+  IT_hex,
   nx = floor(size * w_ratio) %>% as.numeric(),
   ny = floor(size * h_ratio) %>% as.numeric()
 )
@@ -158,7 +158,7 @@ customize it for your map.
 
 ```{r}
 # Create color palette from MetBrewer Library
-color <- MetBrewer::met.brewer(name="OKeeffe1", direction = -1)
+color <- MetBrewer::met.brewer(name="Paquin", direction = -1)
 
 tx <- grDevices::colorRampPalette(color, bias = 4.5)(256)
 swatchplot(tx)
