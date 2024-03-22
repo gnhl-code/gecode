@@ -302,7 +302,7 @@ pop_raster %>%
                  font = "Philosopher",
                  weight = 500,
                  degrees = 0) %>%
-  image_annotate("Visualization by | Culanggo, Felisilda, Casiño, Abainza \nData | Kontur Population 2023",
+  image_annotate("Visualization by : Culanggo | Felisilda| Casiño | Abainza \nData | Kontur Population 2023",
                  gravity = "southwest",
                  location = "+20+20",
                  color = alpha(text1_color, .8),
