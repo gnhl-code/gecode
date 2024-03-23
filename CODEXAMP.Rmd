@@ -1,0 +1,306 @@
+---
+title: "final"
+author: "Genheylou Felisilda"
+date: "2024-03-18"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# How to Create a 3D Population Density Map in R
+
+#### **1. Install library Packages**:
+
+You need to install the necessary packages. Run the following commands
+in your R console. Try to install them one by one, it might library
+restarting the R-session several times.
+
+```{r}
+install.packages("sf", dependencies=TRUE)
+install.packages("tmap", dependencies=TRUE)
+install.packages("mapview", dependencies=TRUE)
+install.packages("stars", dependencies=TRUE)
+install.packages("rayshader", dependencies=TRUE)
+install.packages("MetBrewer", dependencies=TRUE)
+install.packages("rayrender")
+install.packages("extrafont", dependencies=TRUE)
+install.packages("magick", dependencies=TRUE)
+```
+
+#### **2. Load Packages and Set Options**:
+
+Load the library libraries and set the RGL options:
+
+```{r}
+options(rgl.useNULL = FALSE)
+library(tidyverse)
+library(sf)
+library(tmap)
+library(ggplot2)
+library(mapview)
+library(stars)
+library(rayshader)
+library(MetBrewer)
+library(colorspace)
+library(rayrender)
+library(magick)
+library(extrafont)
+```
+
+#### **3. Load and Transform Data**:
+
+You'll need to load the population data and administrative boundaries
+for the Philippines, transforming them into a suitable coordinate
+system. The data is downloaded from Kontur Population.
+
+```{r}
+IT_hex <- st_read("C:/Program Files/RStudio/data/kontur_population_SI_20231101.gpkg") %>% st_transform(3106)
+IT_admin <- st_read("C:/Program Files/RStudio/data/kontur_boundaries_SI_20230628.gpkg") %>% st_transform(3106)
+```
+
+#### **4. Check and Create Boundaries**: 
+
+Inspect the 'name_en' column and create the boundary for the
+Philippines. Use the filter option to plot specific districts and
+divisions on the map.
+
+```{r}
+distinct_names <- IT_admin %>% distinct(name_en)
+print(distinct_names)
+```
+
+```{r}
+# Creating BD Boundary
+IT_boundary <- IT_admin %>%
+  st_geometry %>%
+  st_union %>%
+  st_sf %>%
+  st_make_valid()
+```
+
+#### **5. Plot Boundaries for Verification**:
+
+Visualize the hex data and boundaries to ensure accuracy.
+
+```{r}
+names(IT_hex)
+```
+
+```{r}
+ library(ggplot2)
+#ggplot(IT_hex) + 
+#  geom_sf(aes(fill = population), color = "orange", linewidth = 0) + 
+#  geom_sf(data = IT_boundary, fill = NA, color = "white")
+
+# check the boundary plot
+ggplot(IT_hex) +
+  geom_sf(aes(fill = population),
+          color = "skyblue",
+          linewidth = 0) +
+  geom_sf(
+    data = IT_boundary,
+    fill = NA,
+    color = "black",
+    linetype = "dashed",
+    linewidth = 1
+  )
+```
+
+#### **6. Calculate Aspect Ratio**:
+
+Determine the aspect ratio for the map based on the bounding box of the
+boundary.
+
+```{r}
+# setting the ph boundary as a bounding box
+bbox <- st_bbox(IT_boundary)
+
+# finding the aspect ratio
+bottom_left <- st_point(c(bbox[["xmin"]], bbox[["ymin"]])) %>%
+  st_sfc(crs = 3106)
+bottom_right <- st_point(c(bbox[["xmax"]], bbox[["ymin"]])) %>%
+  st_sfc(crs = 3106)
+top_left <- st_point(c(bbox[["xmin"]], bbox[["ymax"]])) %>%
+  st_sfc(crs = 3106)
+top_right <- st_point(c(bbox[["xmin"]], bbox[["ymax"]])) %>%
+  st_sfc(crs = 3106)
+
+width <- st_distance(bottom_left, bottom_right)
+height <- st_distance(bottom_left, top_left)
+
+if(width > height) {
+  w_ratio = 1
+  h_ratio = height / width
+} else {
+  h_ratio = 1.1
+  w_ratio = width / height
+}
+```
+
+#### 7. **Rasterize Population Data**:
+
+Convert the population data into a raster format suitable for 3D
+rendering.
+
+-   For interactively checking the 3D plot setting the size low will
+    help render in real time.
+
+-   To improve the quality of the 3D image when saving, change the
+    settings to a higher resolution.
+
+```{r}
+# convert to raster to convert to matrix
+size = 3500
+
+pop_raster <- st_rasterize(
+  IT_hex,
+  nx = floor(size * w_ratio) %>% as.numeric(),
+  ny = floor(size * h_ratio) %>% as.numeric()
+)
+
+pop_matrix <- matrix(pop_raster$population,
+                     nrow = floor(size * w_ratio),
+                     ncol = floor(size * h_ratio))
+```
+
+#### **8. Define Color Palette**:
+
+Select a color palette from the MetBrewer or RColorBrewer library and
+customize it for your map.
+
+```{r}
+# Create color palette from MetBrewer Library
+color <- MetBrewer::met.brewer(name="Hiroshige", direction = -1)
+
+tx <- grDevices::colorRampPalette(color, bias = 2.8)(256)
+swatchplot(tx)
+swatchplot(color)
+```
+
+#### **9. Render 3D Map**:
+
+Use Rayshader to create a 3D representation of the population density.
+
+```{r}
+# Close any existing 3D plot before plotting another
+rgl::close3d()
+
+pop_matrix %>%
+  height_shade(texture = tx) %>%
+  plot_3d(heightmap = pop_matrix,
+          zscale = 30,            
+          solid = FALSE,
+          shadowdepth = 0,
+          theta = -20,
+          phi = 20,
+          zoom = .8,
+          fov = 100
+)
+# To interactively view the 3D plot
+rgl::rglwidget()
+```
+
+#### **10. Render in high-quality and Save Image**:
+
+Fine-tune the camera angle and render a high-quality image of the 3D
+map.
+
+```{r}
+outfile <- glue::glue("C:/Program Files/RStudio/data/SI_final_2[1].png")
+
+{
+  start_time <- Sys.time()
+  cat(crayon::cyan(start_time), "\n")
+  if(!file.exists(outfile)) {
+    png::writePNG(matrix(1), target = outfile)
+  }
+  
+  render_highquality(
+    filename = outfile,
+    interactive = FALSE,
+    lightdirection = 55, #Degree
+    lightaltitude = c(30, 80),
+    #lightcolor = c(subset_colors[4], "white"),
+    lightcolor = c("white", "white"),  # Set both lights to white
+    lightintensity = c(600, 100),
+    width = 1400,
+    height = 1580,
+    samples = 100
+  )
+  
+  end_time <- Sys.time()
+  diff <- end_time - start_time
+  cat(crayon::cyan(diff), "\n")
+}
+```
+
+\newpage
+
+#### **11. Annotate the image**
+
+You can add names and more details about your generated visualization.
+
+```{r}
+# Check if packages are installed, and install if necessary
+if (!requireNamespace("showtext", quietly = TRUE)) {
+  install.packages("showtext")
+}
+if (!requireNamespace("extrafont", quietly = TRUE)) {
+  install.packages("extrafont")
+}
+if (!requireNamespace("magick", quietly = TRUE)) {
+  install.packages("magick")
+}
+
+# Load required packages
+library(showtext)
+library(extrafont)
+library(magick)
+
+# Import fonts
+font_import(pattern = "Philosopher")
+
+
+
+# Automatically enable font support
+showtext_auto()
+
+# Load Google font
+font_add_google("Philosopher", regular = "400", bold = "700")
+
+# Read the SVG image
+pop_raster <- image_read("C:/Program Files/RStudio/data/SI_final_2[1].png")
+
+# Define text color
+
+text_color <- "#1e466e" # Adjust as needed
+text1_color <- "#376795"  
+
+# Annotate the image
+pop_raster %>%
+  image_annotate("Slovenia",
+                 gravity = "northeast",
+                 location = "+50+50",
+                 color = text_color,
+                 size = 150,
+                 font = "Philosopher",
+                 weight = 800,
+                 degrees = 0) %>%
+  image_annotate("POPULATION DENSITY MAP",
+                 gravity = "northeast",
+                 location = "+50+230",
+                 color = text_color,
+                 size = 30,
+                 font = "Philosopher",
+                 weight = 500,
+                 degrees = 0) %>%
+  image_annotate("Visualization by: Culanggo | Felisilda | Casiño | Abainza \nData | Kontur Population 2023",
+                 gravity = "southwest",
+                 location = "+20+20",
+                 color = alpha(text1_color, .8),
+                 font = "Philosopher",
+                 size = 22,
+                 degrees = 0) %>%
+  image_write("C:/Program Files/RStudio/data/eme_final_2[1].png", format = "png", quality = 100)
+```
