@@ -2,11 +2,9 @@
 title: "final"
 author: "Genheylou Felisilda"
 date: "2024-03-18"
-output:
-  word_document: default
-  pdf_document: default
-editor_options:
-  markdown:
+output: pdf_document
+editor_options: 
+  markdown: 
     wrap: 72
 ---
 
@@ -46,7 +44,7 @@ You need to install the necessary packages. Run the following commands
 in your R console. Try to install them one by one, it might library
 restarting the R-session several times.
 
-```
+```{r}
 install.packages("sf", dependencies=TRUE)
 install.packages("tmap", dependencies=TRUE)
 install.packages("mapview", dependencies=TRUE)
@@ -87,10 +85,10 @@ system. The data is downloaded from Kontur Population.
 ```{r}
 
 # population data of Myanmar
-MM_hex <- st_read("data/kontur_population_MM_20231101.gpkg") %>% st_transform(3106)
+MM_hex <- st_read("C:/Users/HP PAVILION/Documents/data/kontur_population_MM_20231101.gpkg") %>% st_transform(3106)
 
 # administrative boundaries of Myanmar
-MM_admin <- st_read("data/kontur_boundaries_MM_20230628.gpkg") %>% st_transform(3106)
+MM_admin <- st_read("C:/Users/HP PAVILION/Documents/data/kontur_boundaries_MM_20230628.gpkg") %>% st_transform(3106)
 
 ```
 
@@ -198,7 +196,7 @@ rendering.
 size = 3500
 
 pop_raster <- st_rasterize(
-  MM_hex,
+  IT_hex,
   nx = floor(size * w_ratio) %>% as.numeric(),
   ny = floor(size * h_ratio) %>% as.numeric()
 )
@@ -305,7 +303,7 @@ By incorporating these clarifications, the explanation becomes more
 accessible and understandable for readers who may not be familiar with
 the code or its context.
 
-```
+```{r}
 Sz# Define the output file path using the glue package
 outfile <- glue::glue("C:/Users/HP PAVILION/Documents/data/MM_MAP[5].png")
 
@@ -367,7 +365,7 @@ were really revised. Some of the original parts of the code were still
 used in this chunk. Any other changes made were not intently for a
 different effect but just for preferences in customization.
 
-```
+```{r}
 # Check if packages are installed, and install if necessary
 if (!requireNamespace("showtext", quietly = TRUE)) {
   install.packages("showtext")
