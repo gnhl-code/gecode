@@ -1,0 +1,433 @@
+---
+title: "final"
+author: "Genheylou Felisilda"
+date: "2024-03-18"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## GROUP MEMBERS:
+
+Felisilda \| Abainza \| Casiño \| Culanggo
+
+#### **ERROR Found**
+
+In this document, there is a recurring syntax error present in several
+code blocks. The error arises from the absence of the language
+identifier `{r}` within the code blocks, preventing the code from being
+properly interpreted as R code.
+
+In the original document, the language identifier `{r}` was written like
+this:
+
+``` r
+
+# sample code
+```
+
+To resolve this issue, we made sure that all code blocks are preceded by
+the language identifier `{r}` to indicate that they contain R code.
+
+```{r}
+
+# sample code
+
+```
+
+# How to Create a 3D Population Density Map in R
+
+#### **1. Install library Packages**:
+
+You need to install the necessary packages. Run the following commands
+in your R console. Try to install them one by one, it might library
+restarting the R-session several times.
+
+```{r}
+install.packages("sf", dependencies=TRUE)
+install.packages("tmap", dependencies=TRUE)
+install.packages("mapview", dependencies=TRUE)
+install.packages("stars", dependencies=TRUE)
+install.packages("rayshader", dependencies=TRUE)
+install.packages("MetBrewer", dependencies=TRUE)
+install.packages("rayrender")
+install.packages("extrafont", dependencies=TRUE)
+install.packages("magick", dependencies=TRUE)
+```
+
+#### **2. Load Packages and Set Options**:
+
+Load the library libraries and set the RGL options:
+
+```{r}
+options(rgl.useNULL = FALSE)
+library(tidyverse)
+library(sf)
+library(tmap)
+library(ggplot2)
+library(mapview)
+library(stars)
+library(rayshader)
+library(MetBrewer)
+library(colorspace)
+library(rayrender)
+library(magick)
+library(extrafont)
+```
+
+#### **3. Load and Transform Data**:
+
+You'll need to load the population data and administrative boundaries
+for the Philippines, transforming them into a suitable coordinate
+system. The data is downloaded from Kontur Population.
+
+```{r}
+
+# population data of Myanmar
+MM_hex <- st_read("C:/Users/HP PAVILION/Documents/data/kontur_population_MM_20231101.gpkg") %>% st_transform(3106)
+
+# administrative boundaries of Myanmar
+MM_admin <- st_read("C:/Users/HP PAVILION/Documents/data/kontur_boundaries_MM_20230628.gpkg") %>% st_transform(3106)
+
+```
+
+#### **4. Check and Create Boundaries**:
+
+Inspect the 'name_en' column and create the boundary for the
+Philippines. Use the filter option to plot specific districts and
+divisions on the map.
+
+```{r}
+distinct_names <- MM_admin %>% distinct(name_en)
+print(distinct_names)
+```
+
+```{r}
+# Creating BD Boundary
+MM_boundary <- MM_admin %>%
+  st_geometry %>%
+  st_union %>%
+  st_sf %>%
+  st_make_valid()
+```
+
+#### **5. Plot Boundaries for Verification**:
+
+Visualize the hex data and boundaries to ensure accuracy.
+
+```{r}
+names(MM_hex)
+```
+
+## Revision No. 1
+
+Upon reviewing the original code, we found that the representation of
+the boundary lines in the plot lacked clarity and distinction. To
+address this, we revised the code to enhance the styling of the boundary
+lines in the plot.
+
+We added the `linetype` and `linewidth` parameters in the `geom_sf`
+function to include boundary lines in the plot.
+
+```{r}
+ library(ggplot2)
+
+ggplot(MM_hex) +
+  geom_sf(aes(fill = population),
+          color = "orange",
+          linewidth = 0) +
+  geom_sf(
+    data = MM_boundary,
+    fill = NA,
+    color = "black",
+    
+    # additional code for boundary lines
+    
+    linetype = "dashed",
+    linewidth = .8
+  )
+```
+
+#### **6. Calculate Aspect Ratio**:
+
+Determine the aspect ratio for the map based on the bounding box of the
+boundary.
+
+```{r}
+# setting the ph boundary as a bounding box
+bbox <- st_bbox(MM_boundary)
+
+# finding the aspect ratio
+bottom_left <- st_point(c(bbox[["xmin"]], bbox[["ymin"]])) %>%
+  st_sfc(crs = 3106)
+bottom_right <- st_point(c(bbox[["xmax"]], bbox[["ymin"]])) %>%
+  st_sfc(crs = 3106)
+top_left <- st_point(c(bbox[["xmin"]], bbox[["ymax"]])) %>%
+  st_sfc(crs = 3106)
+top_right <- st_point(c(bbox[["xmin"]], bbox[["ymax"]])) %>%
+  st_sfc(crs = 3106)
+
+width <- st_distance(bottom_left, bottom_right)
+height <- st_distance(bottom_left, top_left)
+
+if(width > height) {
+  w_ratio = 1
+  h_ratio = height / width
+} else {
+  h_ratio = 1.1
+  w_ratio = width / height
+}
+```
+
+#### 7. **Rasterize Population Data**:
+
+Convert the population data into a raster format suitable for 3D
+rendering.
+
+-   For interactively checking the 3D plot setting the size low will
+    help render in real time.
+
+-   To improve the quality of the 3D image when saving, change the
+    settings to a higher resolution.
+
+```{r}
+# convert to raster to convert to matrix
+size = 3500
+
+pop_raster <- st_rasterize(
+  IT_hex,
+  nx = floor(size * w_ratio) %>% as.numeric(),
+  ny = floor(size * h_ratio) %>% as.numeric()
+)
+
+pop_matrix <- matrix(pop_raster$population,
+                     nrow = floor(size * w_ratio),
+                     ncol = floor(size * h_ratio))
+```
+
+#### **8. Define Color Palette**:
+
+Select a color palette from the MetBrewer or RColorBrewer library and
+customize it for your map.
+
+## Revision No. 2
+
+n the original code, the color palette was generated with a
+`bias of 4.5.` While the colors in the palette seemed fitting for our
+visualization, we found that the transitions between colors were not as
+distinct as we had hoped. To address this issue, we decided to change
+the `bias from 4 to 4.5.`
+
+This adjustment creates a color palette with more distinct boundaries
+between colors and less smooth transitions compared to the original
+palette. We expect that this change will lead to a perceptible
+difference in the appearance of the generated color palette, resulting
+in a better presentation of the population density of our chosen
+country.
+
+```{r}
+# Create color palette from MetBrewer Library
+color <- MetBrewer::met.brewer(name="Benedictus", direction = -1)
+
+tx <- grDevices::colorRampPalette(color, bias = 4)(256) # new bias
+swatchplot(tx)
+swatchplot(color)
+
+```
+
+#### **9. Render 3D Map**:
+
+Use Rayshader to create a 3D representation of the population density.
+
+## Revision No. 3
+
+In the original code, the `fov` parameter was included in the `plot_3d`
+function. When we included it, we noticed that it affected the rendering
+process of the 3D plot. Removing the FOV parameter allowed the rendering
+process to proceed without the specific FOV setting. We made this
+decision to optimize rendering efficiency, considering that specifying a
+FOV may increase computational complexity or rendering time.
+
+Although the `FOV` parameter was removed, the `plot_3d` function still
+produces a reasonable output. The default angle leaves us satisfied, and
+we believe that the inclusion of the FOV parameter does not
+significantly affect the overall presentation of our input
+
+```{r}
+# Close any existing 3D plot before plotting another
+rgl::close3d()
+
+pop_matrix %>%
+  height_shade(texture = tx) %>%
+  plot_3d(heightmap = pop_matrix,
+          zscale = 70,            
+          solid = FALSE,
+          shadowdepth = 0,
+  )
+render_camera(theta = -50, phi = 50, zoom = .7,)
+
+# To interactively view the 3D plot
+rgl::rglwidget()
+```
+
+#### **10. Render in high-quality and Save Image**:
+
+Fine-tune the camera angle and render a high-quality image of the 3D
+map.
+
+## Revision No. 4
+
+In this current chunk of code, multiple lines of code were originally
+turned into comments, rendering them inexecutable. We resolved this
+issue by removing the '\#' symbols to revert them back to executable
+code.
+
+However, after running this chunk multiple times, we encountered issues
+generating high-quality files due to incompatible parameter values. The
+original code produced unsuccessful outputs, such as all-black output,
+all-black output with white dots, or a white dimension with a black
+base. These issues stemmed from using
+**`lightcolor = c("white", "white")`** instead of
+**`lightcolor = c(pop_matrix[2], color)`**, which caused the 3D
+population density map to not display any color.
+
+To address this, we added **`sample_method = "sobol"`** to achieve a
+more even coverage of space compared to purely random sequences.
+
+We also made changes to the parameters in the **`render_highquality`**
+function to resolve these issues. Refer to the comments in the code for
+the specific changes made.
+
+By incorporating these clarifications, the explanation becomes more
+accessible and understandable for readers who may not be familiar with
+the code or its context.
+
+```{r}
+Sz# Define the output file path using the glue package
+outfile <- glue::glue("C:/Users/HP PAVILION/Documents/data/MM_MAP[5].png")
+
+{
+  # Record the start time of the execution
+  start_time <- Sys.time()
+  
+  # Print the start time in cyan color
+  cat(crayon::cyan(start_time), "\n")
+  
+  if(!file.exists(outfile)) {
+    png::writePNG(matrix(1), target = outfile)
+  }
+  
+  render_highquality(
+    filename = outfile,
+    interactive = FALSE,     
+    lightdirection = 100,    # originally 50,
+    lightaltitude = c(70, 90),    # originally c(30,80)
+    lightcolor = c(pop_matrix[2], color),   # originally c("white", "white")
+    lightintensity = c(600, 100),
+    samples = 450,   # originally 550
+    sample_method = "sobol",
+    width = 1080,    # originally 1980
+    height = 920     # originally 1180
+  )
+  
+  # Record the end time of the execution
+  end_time <- Sys.time()
+  
+  # Calculate the difference between start and end time
+  diff <- end_time - start_time
+  
+  # Print the execution time in cyan color
+  cat(crayon::cyan(diff), "\n")
+}
+
+```
+
+\newpage
+
+#### **11. Annotate the image**
+
+You can add names and more details about your generated visualization.
+
+## Revision No. 5
+
+We slightly enhanced the original code by revising these original lines:
+
+`install.packages("showtext") library(showtext)`
+`install.packages("extrafont") library(extrafont) font_import(pattern = "Philosopher")`
+
+We transformed it into a code where it checks whether each package is
+already installed before attempting to install it. This prevents
+unnecessary installation processes, saving time and system resources.
+
+While we changed some of the values for font customization, not much
+were really revised. Some of the original parts of the code were still
+used in this chunk. Any other changes made were not intently for a
+different effect but just for preferences in customization.
+
+```{r}
+# Check if packages are installed, and install if necessary
+if (!requireNamespace("showtext", quietly = TRUE)) {
+  install.packages("showtext")
+}
+if (!requireNamespace("extrafont", quietly = TRUE)) {
+  install.packages("extrafont")
+}
+if (!requireNamespace("magick", quietly = TRUE)) {
+  install.packages("magick")
+}
+
+# Load required packages
+library(showtext)
+library(extrafont)
+library(magick)
+
+# Import fonts
+font_import(pattern = "Philosopher")
+
+
+
+# Automatically enable font support
+showtext_auto()
+
+# Load Google font
+font_add_google("Philosopher", regular = "400", bold = "700")
+
+# Read the SVG image
+pop_raster <- image_read("C:/Users/HP PAVILION/Documents/data/MM_MAP[3].png")
+
+# Define text color
+
+text_color <- "#1e466e" # Adjust as needed
+text1_color <- "#376795"  
+
+# Annotate the image
+pop_raster %>%
+  image_annotate("Myanmar",
+                 gravity = "northeast",
+                 location = "+50+50",
+                 color = text_color,
+                 size = 150,
+                 font = "Philosopher",
+                 weight = 800,
+                 degrees = 0) %>%
+  
+  image_annotate("POPULATION DENSITY MAP",
+                 gravity = "northeast",
+                 location = "+50+230",
+                 color = text_color,
+                 size = 30,
+                 font = "Philosopher",
+                 weight = 500,
+                 degrees = 0) %>%
+  
+  image_annotate("Visualization by: Culanggo | Felisilda | Casiño | Abainza \nData @ Kontur Population 2023",
+                 gravity = "southwest",
+                 location = "+20+20",
+                 color = alpha(text1_color, .8),
+                 font = "Philosopher",
+                 size = 22,
+                 degrees = 0) %>%
+  
+  image_write("C:/Users/HP PAVILION/Documents/data/MM_MAP[3](ANNOTATED).png", format = "png", quality = 100)
+```
